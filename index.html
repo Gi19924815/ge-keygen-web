@@ -16,9 +16,31 @@
 </head>
 <body class="flex items-center justify-center min-h-screen p-4">
 
-    <div class="w-full max-w-md bg-gray-900 rounded-2xl shadow-2xl p-6 border border-gray-800">
-        <h1 class="text-2xl font-bold text-center text-blue-400 mb-2">专属授权算号器</h1>
-        <p class="text-center text-gray-500 text-xs mb-6">纯本地计算引擎 · 永不假死</p>
+    <!-- ================= 登录验证界面 ================= -->
+    <div id="loginScreen" class="w-full max-w-md bg-gray-900 rounded-2xl shadow-2xl p-8 border border-gray-800 transition-all duration-500">
+        <h1 class="text-2xl font-bold text-center text-blue-400 mb-2">🔒 算号系统认证</h1>
+        <p class="text-center text-gray-500 text-xs mb-8">内部专属工具 · 请输入授权码访问</p>
+        
+        <div class="mb-6">
+            <input class="w-full bg-gray-800 text-white border border-gray-700 rounded-xl py-3 px-4 leading-tight focus:outline-none focus:border-blue-500 focus:bg-gray-900 text-center text-xl placeholder-gray-600 tracking-[0.2em]" 
+                   id="authCode" 
+                   type="password" 
+                   placeholder="••••••">
+        </div>
+        
+        <button onclick="checkAuth()" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 px-4 rounded-xl shadow-lg transition-colors">
+            验证并进入系统
+        </button>
+        <p id="loginError" class="text-red-400 text-sm text-center mt-4 hidden">❌ 密码错误，请重试</p>
+    </div>
+
+    <!-- ================= 主算号界面 (初始隐藏) ================= -->
+    <div id="mainScreen" class="hidden w-full max-w-md bg-gray-900 rounded-2xl shadow-2xl p-6 border border-gray-800 transition-all duration-500">
+        <div class="flex justify-between items-center mb-2">
+            <h1 class="text-xl font-bold text-blue-400">专属授权算号器</h1>
+            <button onclick="logout()" class="text-xs text-gray-500 hover:text-red-400 bg-gray-800 px-2 py-1 rounded">退出登录</button>
+        </div>
+        <p class="text-left text-gray-500 text-xs mb-6">纯本地计算引擎 · 极简版</p>
 
         <!-- 输入区 -->
         <div class="mb-5">
@@ -38,18 +60,15 @@
 
         <!-- 结果展示区 -->
         <div id="resultArea" class="hidden">
-            <p class="text-gray-400 text-sm font-bold mb-2 pl-1">激活码明文:</p>
+            <p class="text-gray-400 text-sm font-bold mb-2 pl-1">激活码明文 (支持长按复制):</p>
             <div class="bg-black border border-green-500 rounded-xl p-4 mb-4 text-center">
-                <span id="finalKey" class="text-green-400 font-mono text-2xl font-bold tracking-widest select-all"></span>
+                <input id="finalKey" readonly type="text" class="w-full bg-transparent text-green-400 font-mono text-2xl font-bold tracking-widest text-center outline-none selection:bg-green-900 cursor-pointer" value="">
             </div>
 
             <!-- 操作按钮 -->
             <div class="flex flex-col gap-3 mb-6">
-                <button onclick="copyToClipboard()" class="w-full bg-gray-800 border border-gray-600 hover:bg-gray-700 text-white font-bold py-3 px-4 rounded-xl transition-colors flex items-center justify-center">
-                    <span>📋 尝试一键复制</span>
-                </button>
-                <button onclick="downloadFile()" class="w-full bg-green-700 hover:bg-green-600 text-white font-bold py-3 px-4 rounded-xl shadow-lg transition-colors flex items-center justify-center">
-                    <span>💾 下载 .dat 授权文件</span>
+                <button onclick="copyToClipboard()" class="w-full bg-gray-800 border border-gray-600 hover:bg-gray-700 text-white font-bold py-3 px-4 rounded-xl transition-colors flex items-center justify-center shadow-lg">
+                    <span>📋 一键复制到剪贴板</span>
                 </button>
             </div>
             
@@ -57,15 +76,64 @@
         </div>
 
         <!-- 说明 -->
-        <div class="mt-6 pt-6 border-t border-gray-800">
+        <div class="mt-4 pt-4 border-t border-gray-800">
             <p class="text-gray-500 text-xs leading-relaxed text-center">
-                交付说明：您可以直接将下载的 .dat 文件发送给客户；<br>如果一键复制失效，请直接长按绿字手动复制。
+                交付说明：直接复制明文发给客户；<br>让客户自己在电脑新建 .dat 文件粘贴即可。
             </p>
         </div>
     </div>
 
     <script>
-        const SECRET_SALT = "LAOYING_EARTH_PRO_2026";
+        // ================= 安全设置 =================
+        const SECRET_SALT = "LAOYING_EARTH_PRO_2026"; // 核心算法盐值
+        const ACCESS_PASSWORD = "888"; // 👈 网页访问密码
+
+        // 页面加载时检查是否已经登录过
+        window.onload = function() {
+            if (localStorage.getItem('ge_auth_token') === 'verified') {
+                document.getElementById('loginScreen').classList.add('hidden');
+                document.getElementById('mainScreen').classList.remove('hidden');
+            }
+        };
+
+        // 验证密码功能
+        function checkAuth() {
+            const inputCode = document.getElementById('authCode').value;
+            const errorMsg = document.getElementById('loginError');
+            
+            if (inputCode === ACCESS_PASSWORD) {
+                // 密码正确，记住登录状态
+                localStorage.setItem('ge_auth_token', 'verified');
+                document.getElementById('loginScreen').classList.add('hidden');
+                document.getElementById('mainScreen').classList.remove('hidden');
+                errorMsg.classList.add('hidden');
+            } else {
+                // 密码错误
+                errorMsg.classList.remove('hidden');
+                document.getElementById('authCode').value = ""; // 清空输入框
+            }
+        }
+
+        // 退出登录功能
+        function logout() {
+            localStorage.removeItem('ge_auth_token'); // 清除登录状态
+            document.getElementById('mainScreen').classList.add('hidden');
+            document.getElementById('loginScreen').classList.remove('hidden');
+            document.getElementById('authCode').value = ""; // 清空输入框
+            
+            // 隐藏结果区域
+            document.getElementById('resultArea').classList.add('hidden');
+            document.getElementById('machineCode').value = "";
+        }
+
+        // 允许按回车键登录
+        document.getElementById("authCode").addEventListener("keyup", function(event) {
+            if (event.key === "Enter") {
+                checkAuth();
+            }
+        });
+
+        // ================= 算号器核心功能 =================
         let currentKey = "";
 
         function showStatus(msg, isSuccess) {
@@ -82,8 +150,8 @@
 
             if (!codeInput) {
                 resultArea.classList.remove('hidden');
-                finalKeyEl.textContent = "⚠️ 请输入机器码";
-                finalKeyEl.className = "text-red-400 font-mono text-lg font-bold";
+                finalKeyEl.value = "⚠️ 请输入机器码";
+                finalKeyEl.className = "w-full bg-transparent text-center outline-none text-red-400 font-mono text-lg font-bold";
                 currentKey = "";
                 return;
             }
@@ -96,76 +164,74 @@
                 // 截取并格式化: XXXX-XXXX-XXXX
                 currentKey = `${hash.substring(0, 4)}-${hash.substring(4, 8)}-${hash.substring(8, 12)}`;
                 
-                finalKeyEl.textContent = currentKey;
-                finalKeyEl.className = "text-green-400 font-mono text-2xl font-bold tracking-widest select-all";
+                // 赋值到 input 的 value 中
+                finalKeyEl.value = currentKey;
+                finalKeyEl.className = "w-full bg-transparent text-center outline-none text-green-400 font-mono text-2xl font-bold tracking-widest selection:bg-green-900 cursor-pointer";
                 resultArea.classList.remove('hidden');
                 
             } catch (error) {
-                finalKeyEl.textContent = "计算故障";
-                finalKeyEl.className = "text-red-400 font-mono text-xl font-bold";
+                finalKeyEl.value = "计算故障";
+                finalKeyEl.className = "w-full bg-transparent text-center outline-none text-red-400 font-mono text-xl font-bold";
                 currentKey = "";
             }
         }
 
         function copyToClipboard() {
             if (!currentKey) return;
-            
-            // 使用现代剪贴板 API
+
+            // 如果有域名的 HTTPS 环境，使用现代 API
             if (navigator.clipboard && window.isSecureContext) {
                 navigator.clipboard.writeText(currentKey).then(() => {
                     showStatus('✅ 复制成功！可直接前往微信粘贴', true);
-                }).catch(err => {
-                    fallbackCopyTextToClipboard(currentKey);
-                });
+                }).catch(() => forceMobileCopy(currentKey));
             } else {
-                fallbackCopyTextToClipboard(currentKey);
+                // 如果是本地发送到手机的文件 (file:// 协议)，调用硬核复制
+                forceMobileCopy(currentKey);
             }
         }
 
-        function fallbackCopyTextToClipboard(text) {
-            // 兼容老旧手机浏览器的复制方法
+        // 终极硬核移动端隐藏复制技术
+        function forceMobileCopy(text) {
+            // 在页面中创建一个隐藏的文本域
             var textArea = document.createElement("textarea");
             textArea.value = text;
-            textArea.style.top = "0";
-            textArea.style.left = "0";
+            
+            // 极其关键的样式：防止手机软键盘弹出、防止页面跳动
             textArea.style.position = "fixed";
+            textArea.style.top = "-9999px";
+            textArea.style.left = "-9999px";
+            textArea.setAttribute('readonly', 'readonly'); // 防止 iOS 弹出键盘
+            
             document.body.appendChild(textArea);
-            textArea.focus();
-            textArea.select();
+            
+            // 兼容 iOS 的选中方式
+            if (navigator.userAgent.match(/ipad|iphone|mac/i)) {
+                var range = document.createRange();
+                range.selectNodeContents(textArea);
+                var selection = window.getSelection();
+                selection.removeAllRanges();
+                selection.addRange(range);
+                textArea.setSelectionRange(0, 999999);
+            } else {
+                // 安卓和其他设备的选中方式
+                textArea.select();
+            }
+
             try {
+                // 执行原生复制命令
                 var successful = document.execCommand('copy');
-                if(successful) {
-                    showStatus('✅ 复制成功！可直接前往微信粘贴', true);
+                if (successful) {
+                    showStatus('✅ 复制成功！请直接切到微信粘贴', true);
                 } else {
-                    showStatus('❌ 复制失败，请长按绿字手动复制', false);
+                    showStatus('❌ 自动复制被拦截，请长按上方绿字手动复制', false);
                 }
             } catch (err) {
-                showStatus('❌ 复制失败，请长按绿字手动复制', false);
+                showStatus('❌ 复制被拦截，请长按上方绿字手动复制', false);
             }
-            document.body.removeChild(textArea);
-        }
-
-        function downloadFile() {
-            if (!currentKey) return;
             
-            // 利用浏览器的 Blob 对象强制触发原生下载
-            try {
-                const blob = new Blob([currentKey], { type: 'text/plain' });
-                const url = window.URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.style.display = 'none';
-                a.href = url;
-                // 注意这里带有 . 前缀
-                a.download = '.ge_tour_license.dat';
-                document.body.appendChild(a);
-                a.click();
-                window.URL.revokeObjectURL(url);
-                document.body.removeChild(a);
-                
-                showStatus('✅ 下载成功！请到手机【文件管理】中查看', true);
-            } catch (err) {
-                showStatus('❌ 下载被拦截，请长按绿字复制明文！', false);
-            }
+            // 清理战场
+            document.body.removeChild(textArea);
+            window.getSelection().removeAllRanges();
         }
     </script>
 </body>
