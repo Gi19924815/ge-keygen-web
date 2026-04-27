@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>GE 专属授权算号器</title>
+    <!-- 引入强大的 Tailwind CSS 进行快速美化 -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- 引入 MD5 加密算法库 -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
+    <style>
+        body { background-color: #121212; color: #ffffff; }
+        /* 隐藏滚动条但允许滚动 */
+        ::-webkit-scrollbar { display: none; }
+    </style>
+</head>
+<body class="flex items-center justify-center min-h-screen p-4">
+
+    <div class="w-full max-w-md bg-gray-900 rounded-2xl shadow-2xl p-6 border border-gray-800">
+        <h1 class="text-2xl font-bold text-center text-blue-400 mb-2">专属授权算号器</h1>
+        <p class="text-center text-gray-500 text-xs mb-6">纯本地计算引擎 · 永不假死</p>
+
+        <!-- 输入区 -->
+        <div class="mb-5">
+            <label class="block text-gray-400 text-sm font-bold mb-2 pl-1" for="machineCode">
+                请粘贴客户机器码
+            </label>
+            <input class="w-full bg-gray-800 text-white border border-gray-700 rounded-xl py-3 px-4 leading-tight focus:outline-none focus:border-blue-500 focus:bg-gray-900 text-center text-lg placeholder-gray-600 transition-colors" 
+                   id="machineCode" 
+                   type="text" 
+                   placeholder="例如: GE-91008C76">
+        </div>
+
+        <!-- 算号按钮 -->
+        <button onclick="generateKey()" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 px-4 rounded-xl shadow-lg transition-colors mb-6">
+            🎯 算号并生成授权
+        </button>
+
+        <!-- 结果展示区 -->
+        <div id="resultArea" class="hidden">
+            <p class="text-gray-400 text-sm font-bold mb-2 pl-1">激活码明文:</p>
+            <div class="bg-black border border-green-500 rounded-xl p-4 mb-4 text-center">
+                <span id="finalKey" class="text-green-400 font-mono text-2xl font-bold tracking-widest select-all"></span>
+            </div>
+
+            <!-- 操作按钮 -->
+            <div class="flex flex-col gap-3 mb-6">
+                <button onclick="copyToClipboard()" class="w-full bg-gray-800 border border-gray-600 hover:bg-gray-700 text-white font-bold py-3 px-4 rounded-xl transition-colors flex items-center justify-center">
+                    <span>📋 尝试一键复制</span>
+                </button>
+                <button onclick="downloadFile()" class="w-full bg-green-700 hover:bg-green-600 text-white font-bold py-3 px-4 rounded-xl shadow-lg transition-colors flex items-center justify-center">
+                    <span>💾 下载 .dat 授权文件</span>
+                </button>
+            </div>
+            
+            <p id="statusMsg" class="text-center text-sm font-bold h-6 transition-colors"></p>
+        </div>
+
+        <!-- 说明 -->
+        <div class="mt-6 pt-6 border-t border-gray-800">
+            <p class="text-gray-500 text-xs leading-relaxed text-center">
+                交付说明：您可以直接将下载的 .dat 文件发送给客户；<br>如果一键复制失效，请直接长按绿字手动复制。
+            </p>
+        </div>
+    </div>
+
+    <script>
+        const SECRET_SALT = "LAOYING_EARTH_PRO_2026";
+        let currentKey = "";
+
+        function showStatus(msg, isSuccess) {
+            const statusEl = document.getElementById('statusMsg');
+            statusEl.textContent = msg;
+            statusEl.className = `text-center text-sm font-bold h-6 transition-colors ${isSuccess ? 'text-green-400' : 'text-red-400'}`;
+            setTimeout(() => { statusEl.textContent = ''; }, 4000);
+        }
+
+        function generateKey() {
+            const codeInput = document.getElementById('machineCode').value.trim();
+            const resultArea = document.getElementById('resultArea');
+            const finalKeyEl = document.getElementById('finalKey');
+
+            if (!codeInput) {
+                resultArea.classList.remove('hidden');
+                finalKeyEl.textContent = "⚠️ 请输入机器码";
+                finalKeyEl.className = "text-red-400 font-mono text-lg font-bold";
+                currentKey = "";
+                return;
+            }
+
+            try {
+                // 核心算法：转大写拼接盐值后计算 MD5
+                const rawStr = codeInput.toUpperCase() + SECRET_SALT;
+                const hash = CryptoJS.MD5(rawStr).toString().toUpperCase();
+                
+                // 截取并格式化: XXXX-XXXX-XXXX
+                currentKey = `${hash.substring(0, 4)}-${hash.substring(4, 8)}-${hash.substring(8, 12)}`;
+                
+                finalKeyEl.textContent = currentKey;
+                finalKeyEl.className = "text-green-400 font-mono text-2xl font-bold tracking-widest select-all";
+                resultArea.classList.remove('hidden');
+                
+            } catch (error) {
+                finalKeyEl.textContent = "计算故障";
+                finalKeyEl.className = "text-red-400 font-mono text-xl font-bold";
+                currentKey = "";
+            }
+        }
+
+        function copyToClipboard() {
+            if (!currentKey) return;
+            
+            // 使用现代剪贴板 API
+            if (navigator.clipboard && window.isSecureContext) {
+                navigator.clipboard.writeText(currentKey).then(() => {
+                    showStatus('✅ 复制成功！可直接前往微信粘贴', true);
+                }).catch(err => {
+                    fallbackCopyTextToClipboard(currentKey);
+                });
+            } else {
+                fallbackCopyTextToClipboard(currentKey);
+            }
+        }
+
+        function fallbackCopyTextToClipboard(text) {
+            // 兼容老旧手机浏览器的复制方法
+            var textArea = document.createElement("textarea");
+            textArea.value = text;
+            textArea.style.top = "0";
+            textArea.style.left = "0";
+            textArea.style.position = "fixed";
+            document.body.appendChild(textArea);
+            textArea.focus();
+            textArea.select();
+            try {
+                var successful = document.execCommand('copy');
+                if(successful) {
+                    showStatus('✅ 复制成功！可直接前往微信粘贴', true);
+                } else {
+                    showStatus('❌ 复制失败，请长按绿字手动复制', false);
+                }
+            } catch (err) {
+                showStatus('❌ 复制失败，请长按绿字手动复制', false);
+            }
+            document.body.removeChild(textArea);
+        }
+
+        function downloadFile() {
+            if (!currentKey) return;
+            
+            // 利用浏览器的 Blob 对象强制触发原生下载
+            try {
+                const blob = new Blob([currentKey], { type: 'text/plain' });
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.style.display = 'none';
+                a.href = url;
+                // 注意这里带有 . 前缀
+                a.download = '.ge_tour_license.dat';
+                document.body.appendChild(a);
+                a.click();
+                window.URL.revokeObjectURL(url);
+                document.body.removeChild(a);
+                
+                showStatus('✅ 下载成功！请到手机【文件管理】中查看', true);
+            } catch (err) {
+                showStatus('❌ 下载被拦截，请长按绿字复制明文！', false);
+            }
+        }
+    </script>
+</body>
+</html>
